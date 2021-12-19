@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content  %}
+
+
+<div class="container">
+<div class="card text-center">
+    <div class="card-header">
+      Details
+    </div>
+    <div class="card-body">
+      <h5 class="card-title" > {{ file_detail.title }} </h5>
+      <p class="card-text">{{ file_detail.user }} Share this file with you</p>
+      <p class="card-text">{{ file_detail.desc }}</p>
+      <a href="{% url 'openFile' file_detail.id %}">
+
+          <p class="card-text">{{ file_detail.file_field }}</p>
+        </a>
+      
+    </div>
+    <div class="card-footer text-muted">
+        {{ file_detail.created_at }}
+    </div>
+  </div>
+    <h4>Write here email if you want to share your post! </h4>
+    {% if error %}
+    {{ error }}
+    {% endif %}
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            {{form.errors}}
+        </div>
+    {% endif %}
+    <form method="POST" name="shareFile">
+        {%csrf_token %}
+        <ul class="row">
+            <li class="col-sm-12">
+              <label placeholer="email"> 
+                {{form.sharedUser}}
+                <div>
+
+                    <label for="">Can comment?</label>
+                    {{form.can_comment}}
+                </label>
+            </div>
+            </li>
+            <li class="col-sm-6">
+            <button type="submit" class="btn btn-dark" name="shareFile"> Share </button>
+            </li>
+          </ul>
+    </form>
+    {% for detail in file_detail.shareposts.all %}
+
+    {% if detail.sharedUser == request.user and detail.can_comment == True %}
+    <br>
+    <p><strong>Comments</strong></p>
+    <br>
+    <div class="row" id="comments-list" >
+    <ul id="chat-item">
+    {% for comment in file_detail.commentpost.all %}
+    <div class="col-md-12 mt-3 mb-3" >
+        <p><strong>{{ comment.user.username }}</strong> </p>
+        <p>{{ comment.content }}</p>
+    </div>
+    {% endfor %}
+  </ul>
+    </div>
+    <hr>
+
+    <form id="comment-form"  method="POST">
+      {% csrf_token %}
+    
+       
+      <div class="form-group m-0">
+          <textarea name="text" cols="40" rows="3" class="comment-input"
+              placeholder="Here You can write your comment" required=""></textarea>
+      </div>
+      <br>
+      <button class="btn btn-primary" type="submit"> Comment</button>
+    </form>
+    {% elif file_detail.user == request.user %}
+    <br>
+    <p><strong>Comments</strong></p>
+    <br>
+    <div class="row" id="comments-list" >
+    <ul id="chat-item">
+    {% for comment in file_detail.commentpost.all %}
+    <div class="col-md-12 mt-3 mb-3" >
+        <p><strong>{{ comment.user.username }}</strong> </p>
+        <p>{{ comment.content }}</p>
+    </div>
+    {% endfor %}
+  </ul>
+    </div>
+    <hr>
+
+    <form id="comment-form"  method="POST">
+      {% csrf_token %}
+    
+       
+      <div class="form-group m-0">
+          <textarea name="text" cols="40" rows="3" class="comment-input"
+              placeholder="Here You can write your comment" required=""></textarea>
+      </div>
+      <br>
+      <button class="btn btn-primary" type="submit"> Comment</button>
+    </form>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- <section class="section">
+  <div class="container">
+    <div class="columns is-multiline">
+        <div class="column is-6 is-offset-3">
+          <section class="hero is-primary">
+            <div class="hero-body">
+              <p class="title">Chatty</p>
+              <p class="subtitle">A simple chat built with Django, Channels and Redis</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="column is-6 is-offset-3">
+          <div class="box">     
+            <div id="chat-messages">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="control">
+              <input class="input" type="text" placeholder="Message" id="chat-message-input">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="control">
+              <a class="button is-info" id="chat-message-submit">Submit</a>
+            </div>
+          </div>
+
+          <small class="has-text-grey-light">Your username: {{ username }}</small>
+        </div>
+      </div>
+   </div>
+</section> -->
+
+
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'js/reconnecting-websocket.min.js' %}"></script>
+<script>
+  var loc = window.location;
+  // websockets script
+  var wsStart = 'ws://';
+    if (loc.protocol === 'https:'){
+        wsStart = 'wss://'
+    }
+  var socket_url = wsStart + window.location.host + loc.pathname;
+  var endpoint = wsStart + loc.host + loc.pathname;
+  var socket = new ReconnectingWebSocket(endpoint);
+  var message = document.querySelector("#chat-message-input");
+  var chatHolder = document.querySelector("#chat-item");
+  var user = "{{ request.user }}";
+  
+ 
+  socket.onmessage = function (event) {
+    var newComment = JSON.parse(event.data);
+    console.log('new message', newComment);
+    // Receive consumer data
+    var comment_text = newComment['comment_text'];
+    var full_name = newComment['author_fullname'];
+    var user_url = newComment['author_url'];
+    var user_profession = newComment['author_profession'];
+    var comment_id = newComment['comment_id'];
+    var conversation_comment_section = $('#conversation-comment-section');
+
+    var textalign = "text-align: left";
+        chatHolder.innerHTML += `
+           <div class="col-md-12 mt-3 mb-3">
+                <p><strong> ${newComment.username} </strong> </p>
+                <p> ${newComment.comment_text}</p>
+            </div>
+            `
+      
+};
+
+  
+
+  socket.onopen = function (event) {
+    // console.log('Comment socket on open ', event);
+    var form = document.getElementById('comment-form');
+    console.log(form)
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      var comment_text = $(this).find('.comment-input').val();
+      data = {
+        'comment_text': comment_text,
+      };
+      // Send data to consumer
+      socket.send(JSON.stringify(data));
+      $(this)[0].reset();
+    })
+
+    };
+
+  socket.onerror = function(e){
+    console.log("error", e);
+  }
+  socket.onclose = function(e){
+    console.log("close", e);
+  }
+  </script>
+
+{% endblock js%}
